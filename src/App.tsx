@@ -31,10 +31,23 @@ export function App() {
 
   const loadTransactionsByEmployee = useCallback(
     async (employeeId: string) => {
+      setIsLoading(true)
       paginatedTransactionsUtils.invalidateData()
       await transactionsByEmployeeUtils.fetchById(employeeId)
+      setIsLoading(false)
     },
     [paginatedTransactionsUtils, transactionsByEmployeeUtils]
+  )
+
+  const handleEmployeeFilterChange = useCallback(
+    async (employee: Employee | null) => {
+      if (employee === null || employee.id === EMPTY_EMPLOYEE.id) {
+        await loadAllTransactions()
+      } else {
+        await loadTransactionsByEmployee(employee.id)
+      }
+    },
+    [loadAllTransactions, loadTransactionsByEmployee]
   )
 
   useEffect(() => {
@@ -59,13 +72,7 @@ export function App() {
             value: item.id,
             label: `${item.firstName} ${item.lastName}`,
           })}
-          onChange={async (newValue) => {
-            if (newValue === null) {
-              return
-            }
-
-            await loadTransactionsByEmployee(newValue.id)
-          }}
+          onChange={handleEmployeeFilterChange}
         />
 
         <div className="RampBreak--l" />
@@ -73,17 +80,21 @@ export function App() {
         <div className="RampGrid">
           <Transactions transactions={transactions} />
 
-          {transactions !== null && !paginatedTransactions?.nextPage && (
-            <button
-              className="RampButton"
-              disabled={paginatedTransactionsUtils.loading}
-              onClick={async () => {
-                await loadAllTransactions()
-              }}
-            >
-              View More
-            </button>
-          )}
+          {transactions !== null && 
+           paginatedTransactions !== null &&
+           paginatedTransactions.nextPage &&
+           !transactionsByEmployee &&
+            (
+              <button
+                className="RampButton"
+                disabled={paginatedTransactionsUtils.loading}
+                onClick={async () => {
+                  await loadAllTransactions()
+                }}
+              >
+                View More
+              </button>
+            )}
         </div>
       </main>
     </Fragment>

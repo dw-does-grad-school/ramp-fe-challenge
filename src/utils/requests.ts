@@ -8,7 +8,7 @@ import {
 } from "./types"
 import mockData from "../mock-data.json"
 
-const TRANSACTIONS_PER_PAGE = 5
+const TRANSACTIONS_PER_PAGE = 5 // TODO: Look into this some more and make this dynamic
 
 const data: { employees: Employee[]; transactions: Transaction[] } = {
   employees: mockData.employees,

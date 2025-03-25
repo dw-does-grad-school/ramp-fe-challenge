@@ -5,25 +5,30 @@ import { TransactionPane } from "./TransactionPane"
 import { SetTransactionApprovalFunction, TransactionsComponent } from "./types"
 
 export const Transactions: TransactionsComponent = ({ transactions }) => {
-  const { fetchWithoutCache, loading } = useCustomFetch()
+  const { fetchWithCache, loading } = useCustomFetch()
 
   const setTransactionApproval = useCallback<SetTransactionApprovalFunction>(
     async ({ transactionId, newValue }) => {
-      await fetchWithoutCache<void, SetTransactionApprovalParams>("setTransactionApproval", {
+      await fetchWithCache<void, SetTransactionApprovalParams>("setTransactionApproval", {
         transactionId,
         value: newValue,
       })
     },
-    [fetchWithoutCache]
+    [fetchWithCache]
   )
 
   if (transactions === null) {
     return <div className="RampLoading--container">Loading...</div>
   }
 
+  // Sort transactions by date (most recent first)
+  const sortedTransactions = [...transactions].sort((a, b) => 
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  )
+
   return (
     <div data-testid="transaction-container">
-      {transactions.map((transaction) => (
+      {sortedTransactions.map((transaction) => (
         <TransactionPane
           key={transaction.id}
           transaction={transaction}
