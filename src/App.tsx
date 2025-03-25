@@ -9,10 +9,13 @@ import { EMPTY_EMPLOYEE } from "./utils/constants"
 import { Employee } from "./utils/types"
 
 export function App() {
-  const { data: employees, ...employeeUtils } = useEmployees()
-  const { data: paginatedTransactions, ...paginatedTransactionsUtils } = usePaginatedTransactions()
+  const { data: employees, loading: employeesLoading, ...employeeUtils } = useEmployees()
+  const { data: paginatedTransactions, loading: paginatedLoading, ...paginatedTransactionsUtils } = usePaginatedTransactions()
   const { data: transactionsByEmployee, ...transactionsByEmployeeUtils } = useTransactionsByEmployee()
-  const [isLoading, setIsLoading] = useState(false)
+  
+  // Separate loading states for different operations
+  const [viewMoreLoading, setViewMoreLoading] = useState(false)
+  const [filterLoading, setFilterLoading] = useState(false)
 
   const transactions = useMemo(
     () => paginatedTransactions?.data ?? transactionsByEmployee ?? null,
@@ -20,41 +23,25 @@ export function App() {
   )
 
   const loadAllTransactions = useCallback(async () => {
-    setIsLoading(true)
     transactionsByEmployeeUtils.invalidateData()
-
     await employeeUtils.fetchAll()
     await paginatedTransactionsUtils.fetchAll()
-
-    setIsLoading(false)
   }, [employeeUtils, paginatedTransactionsUtils, transactionsByEmployeeUtils])
 
   const loadTransactionsByEmployee = useCallback(
     async (employeeId: string) => {
-      setIsLoading(true)
       paginatedTransactionsUtils.invalidateData()
       await transactionsByEmployeeUtils.fetchById(employeeId)
-      setIsLoading(false)
     },
     [paginatedTransactionsUtils, transactionsByEmployeeUtils]
   )
 
-  const handleEmployeeFilterChange = useCallback(
-    async (employee: Employee | null) => {
-      if (employee === null || employee.id === EMPTY_EMPLOYEE.id) {
-        await loadAllTransactions()
-      } else {
-        await loadTransactionsByEmployee(employee.id)
-      }
-    },
-    [loadAllTransactions, loadTransactionsByEmployee]
-  )
-
   useEffect(() => {
-    if (employees === null && !employeeUtils.loading) {
+    if (employees === null && !employeesLoading) {
       loadAllTransactions()
     }
-  }, [employeeUtils.loading, employees, loadAllTransactions])
+  }, [employeesLoading, employees, loadAllTransactions])
+
   return (
     <Fragment>
       <main className="MainContainer">
@@ -63,7 +50,7 @@ export function App() {
         <hr className="RampBreak--l" />
 
         <InputSelect<Employee>
-          isLoading={isLoading}
+          isLoading={employeesLoading}
           defaultValue={EMPTY_EMPLOYEE}
           items={employees === null ? [] : [EMPTY_EMPLOYEE, ...employees]}
           label="Filter by employee"
@@ -72,7 +59,12 @@ export function App() {
             value: item.id,
             label: `${item.firstName} ${item.lastName}`,
           })}
-          onChange={handleEmployeeFilterChange}
+          onChange={async (newValue) => {
+            if (newValue === null) {
+              return
+            }
+            await loadTransactionsByEmployee(newValue.id)
+          }}
         />
 
         <div className="RampBreak--l" />
@@ -81,20 +73,19 @@ export function App() {
           <Transactions transactions={transactions} />
 
           {transactions !== null && 
-           paginatedTransactions !== null &&
-           paginatedTransactions.nextPage &&
-           !transactionsByEmployee &&
-            (
-              <button
-                className="RampButton"
-                disabled={paginatedTransactionsUtils.loading}
-                onClick={async () => {
-                  await loadAllTransactions()
-                }}
-              >
-                View More
-              </button>
-            )}
+           paginatedTransactions !== null && 
+           paginatedTransactions.nextPage && 
+           !transactionsByEmployee && (
+            <button
+              className="RampButton"
+              disabled={paginatedLoading}
+              onClick={async () => {
+                await loadAllTransactions()
+              }}
+            >
+              View More
+            </button>
+          )}
         </div>
       </main>
     </Fragment>
